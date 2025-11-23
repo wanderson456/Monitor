@@ -1,0 +1,157 @@
+{
+  "executado_em": "23/11/2025 15:16",
+  "itens": [
+    {
+      "item": "estrutura organizacional",
+      "url": null,
+      "tipo": null,
+      "lei": "Art. 8º - organograma e funções",
+      "detalhe": null,
+      "status": "🔴 Falta"
+    },
+    {
+      "item": "competências",
+      "url": null,
+      "tipo": null,
+      "lei": "Art. 8º - competências dos órgãos",
+      "detalhe": null,
+      "status": "🔴 Falta"
+    },
+    {
+      "item": "contatos",
+      "url": null,
+      "tipo": null,
+      "lei": "Art. 8º - endereços e telefones",
+      "detalhe": null,
+      "status": "🔴 Falta"
+    },
+    {
+      "item": "contrato",
+      "url": null,
+      "tipo": null,
+      "lei": "Art. 8º - contratos e aditivos",
+      "detalhe": null,
+      "status": "🔴 Falta"
+    },
+    {
+      "item": "balanço",
+      "url": null,
+      "tipo": null,
+      "lei": "Art. 7º - relatórios financeiros",
+      "detalhe": null,
+      "status": "🔴 Falta"
+    },
+    {
+      "item": "folha de pagamento",
+      "url": null,
+      "tipo": null,
+      "lei": "Art. 8º e 11 - remuneração de servidores",
+      "detalhe": null,
+      "status": "🔴 Falta"
+    },
+    {
+      "item": "relatório de gestão",
+      "url": null,
+      "tipo": null,
+      "lei": "Art. 7º - prestação de contas",
+      "detalhe": null,
+      "status": "🔴 Falta"
+    },
+    {
+      "item": "portaria",
+      "url": null,
+      "tipo": null,
+      "lei": "Art. 8º - atos normativos",
+      "detalhe": null,
+      "status": "🔴 Falta"
+    },
+    {
+      "item": "convênio",
+      "url": null,
+      "tipo": null,
+      "lei": "Art. 8º - convênios e repasses",
+      "detalhe": null,
+      "status": "🔴 Falta"
+    },
+    {
+      "item": "subvenção",
+      "url": null,
+      "tipo": null,
+      "lei": "Art. 8º - subvenções",
+      "detalhe": null,
+      "status": "🔴 Falta"
+    },
+    {
+      "item": "programa",
+      "url": null,
+      "tipo": null,
+      "lei": "Art. 8º - planos e programas",
+      "detalhe": null,
+      "status": "🔴 Falta"
+    },
+    {
+      "item": "aditivo",
+      "url": null,
+      "tipo": null,
+      "lei": "Art. 7º e 8º - contratos e aditivos públicos",
+      "detalhe": null,
+      "status": "🔴 Falta"
+    },
+    {
+      "item": "RPPS",
+      "url": "https://iprema.com.br/institucional/conheca-o-rpps/",
+      "tipo": "html",
+      "lei": "Art. 8º - informações institucionais",
+      "detalhe": "conheça o rpps",
+      "status": "🟢 OK"
+    },
+    {
+      "item": "RPPS",
+      "url": "https://iprema.com.br/institucional/conheca-o-rpps/",
+      "tipo": "html",
+      "lei": "Art. 8º - informações institucionais",
+      "detalhe": "conheça o rpps",
+      "status": "🟢 OK"
+    },
+    {
+      "item": "RPPS",
+      "url": "https://iprema.com.br/institucional/conheca-o-rpps/",
+      "tipo": "html",
+      "lei": "Art. 8º - informações institucionais",
+      "detalhe": "conheça o rpps",
+      "status": "🟢 OK"
+    },
+    {
+      "item": "licitação",
+      "url": "https://iprema.com.br/governanca-corporativa/documentacao-necessaria-para-solicitacao-de-beneficios/",
+      "tipo": "html",
+      "lei": "Art. 8º - licitações e contratos",
+      "detalhe": "documentação necessária para solicitação de benefícios",
+      "status": "🟢 OK"
+    },
+    {
+      "item": "demonstrativo",
+      "url": "https://cadprev.previdencia.gov.br/Cadprev/pages/modulos/dpinV2/consultarDemonstrativos.xhtml",
+      "tipo": "html",
+      "lei": "Art. 7º - demonstrações contábeis",
+      "detalhe": "dpin",
+      "status": "🟢 OK"
+    },
+    {
+      "item": "DPIN",
+      "url": "https://cadprev.previdencia.gov.br/Cadprev/pages/modulos/dpinV2/consultarDemonstrativos.xhtml",
+      "tipo": "html",
+      "lei": "Art. 7º - demonstrações financeiras",
+      "detalhe": "dpin",
+      "status": "🟢 OK"
+    },
+    {
+      "item": "demonstrativo",
+      "url": "https://cadprev.previdencia.gov.br/Cadprev/pages/modulos/draa/consultarDemonstrativos.xhtml",
+      "tipo": "html",
+      "lei": "Art. 7º - demonstrações contábeis",
+      "detalhe": "draa",
+      "status": "🟢 OK"
+    }
+  ]
+}
