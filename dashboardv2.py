@@ -1,3 +1,4 @@
+import os
 import dash
 from dash import html, dcc, Input, Output, State, dash_table
 import dash_bootstrap_components as dbc
@@ -9,11 +10,16 @@ from urllib.parse import urljoin, urlparse
 import io
 import threading
 import time
+import re
 
 try:
     import PyPDF2
 except:
     PyPDF2 = None
+
+# cria pasta assets se não existir (para servir a página HTML)
+if not os.path.exists("assets"):
+    os.makedirs("assets")
 
 # Inicializa app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -33,14 +39,15 @@ ABAS_LAI = {
     "Ouvidoria / Fale Conosco": ["ouvidoria","e-sic","protocolo","formulário de atendimento","prazo de resposta"]
 }
 
-# Variáveis globais para thread e dashboard
+# Variáveis globais
 resultados_parciais = []
 log_msgs = []
 progresso = {"total": 0, "processados": 0}
-url_global = None
 thread_active = False
+url_global = None
+stop_thread = False  # controle para parar a verificação
 
-# --- Funções de extração ---
+# --- Funções ---
 def coletar_links_internos(base_url):
     links = set()
     try:
@@ -59,7 +66,7 @@ def extrair_texto_pdf(url):
         return ""
     try:
         resp = requests.get(url, timeout=10)
-        with io.BytesIO(resp.content) as f:
+        with io.Bytes.BytesIO(resp.content) as f:
             reader = PyPDF2.PdfReader(f)
             texto = ""
             for page in reader.pages:
@@ -87,9 +94,11 @@ def verificar_texto(texto, palavras):
             encontrados.append(p)
     return encontrados
 
-# --- Função de processamento incremental ---
 def processar_site(url):
-    global resultados_parciais, log_msgs, progresso, thread_active
+    """
+    Processamento incremental (thread). Atualiza resultados_parciais e log_msgs.
+    """
+    global resultados_parciais, log_msgs, progresso, thread_active, stop_thread
     log_msgs = []
     resultados_parciais = []
 
@@ -99,12 +108,17 @@ def processar_site(url):
     log_msgs.append(f"Total de links: {len(links)}")
 
     for link in links:
+        if stop_thread:
+            log_msgs.append("Processamento interrompido pelo usuário.")
+            break
+
         log_msgs.append(f"Processando: {link}")
         texto_total = ""
         try:
             resp = requests.get(link, timeout=5)
             soup = BeautifulSoup(resp.text, "html.parser")
-            texto_total += soup.get_text()
+            texto_total += soup.get_text() or ""
+
             for a in soup.find_all("a", href=True):
                 href = a["href"]
                 file_url = urljoin(link, href)
@@ -114,42 +128,61 @@ def processar_site(url):
                 elif href.lower().endswith((".csv",".xls",".xlsx")):
                     log_msgs.append(f"  -> Planilha: {file_url}")
                     texto_total += extrair_texto_planilha(file_url)
-        except:
-            log_msgs.append(f"Erro ao processar {link}")
+        except Exception as e:
+            log_msgs.append(f"Erro ao processar {link}: {e}")
 
-        # Atualiza status parcial
         for aba, palavras in ABAS_LAI.items():
             encontrados = verificar_texto(texto_total, palavras)
-            for p in palavras:
-                status = "OK" if p in encontrados else "Não encontrado"
-                # Atualiza resultados existentes ou adiciona novo
-                achou = next((r for r in resultados_parciais if r["aba"]==aba and r["conteudo"]==p), None)
-                if achou:
-                    if status == "OK":
-                        achou["status"] = "OK"
-                        achou["link"] = url
-                else:
-                    resultados_parciais.append({"aba": aba, "conteudo": p, "link": url if status=="OK" else None, "status": status})
-        
+            resultados_parciais.append({
+                "aba": aba,
+                "conteudo": ", ".join(palavras),
+                "link": link if encontrados else None,
+                "status": "OK" if encontrados else "Não encontrado"
+            })
+
         progresso["processados"] += 1
-        time.sleep(0.2)  # evita sobrecarga
+        time.sleep(0.2)
 
     thread_active = False
+    stop_thread = False
+
+# gera HTML com links do log
+def gerar_html_log_links():
+    arquivo_saida = os.path.join("assets", "log_links.html")
+    urls = set(re.findall(r'https?://[^\s\)]+', "\n".join(log_msgs)))
+    html_content = "<html><head><meta charset='utf-8'><title>Links Verificados</title></head><body>"
+    html_content += "<h2 style='text-align:center'>Links verificados</h2><ul style='font-family:Arial,sans-serif;'>"
+    for url in sorted(urls):
+        html_content += f"<li><a href='{url}' target='_blank'>{url}</a></li>"
+    html_content += "</ul></body></html>"
+
+    with open(arquivo_saida, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    return "/assets/log_links.html"
 
 # --- Layout ---
 app.layout = dbc.Container([
+    dcc.Location(id="redirect-html", refresh=True),
+
     html.H1("Monitor Incremental LAI", className="text-center mb-4"),
     dbc.Row([
-        dbc.Col([dbc.Input(id="url-input", type="text", placeholder="Digite o site")], width=8),
-        dbc.Col([dbc.Button("Verificar", id="run-button", color="primary")], width=4)
+        dbc.Col([dbc.Input(id="url-input", type="text", placeholder="Digite o site (ex: https://araripe.ce.gov.br/transparencia/)")], width=6),
+        dbc.Col([dbc.Button("Verificar", id="run-button", color="primary")], width=3),
+        dbc.Col([dbc.Button("Parar Verificação", id="stop-button", color="danger")], width=3)
     ], className="mb-4"),
 
-    dbc.Row([dbc.Col([dbc.Progress(id="progress-bar", value=0, striped=True, animated=True, color="info")])]),
+    dbc.Row([
+        dbc.Col([
+            dbc.Progress(id="progress-bar", value=0, striped=True, animated=True, color="info", style={"height":"30px"}),
+            html.Div(id="progress-text", className="text-center mt-1", style={"fontWeight":"600"})
+        ], width=12)
+    ], className="mb-3"),
 
     dbc.Row([dbc.Col([dcc.Graph(id="lai-graph")])]),
 
     dbc.Row([dbc.Col([
-        html.H4("Tabela de palavras-chave LAI"),
+        html.H4("Tabela de palavras-chave LAI", className="text-center"),
         dash_table.DataTable(
             id='lai-table',
             columns=[
@@ -158,24 +191,57 @@ app.layout = dbc.Container([
                 {"name": "Link", "id": "link", "presentation": "markdown"},
                 {"name": "Status", "id": "status"}
             ],
-            style_cell={'textAlign': 'left', 'padding': '5px'},
-            style_header={'backgroundColor': '#f2f2f2', 'fontWeight': 'bold'},
+            style_table={
+                'margin': '0 auto',
+                'width': '92%',
+                'overflowX': 'auto',
+                'border': '1px solid #e0e0e0',
+                'borderRadius': '10px',
+                'boxShadow': '0 2px 8px rgba(0,0,0,0.08)'
+            },
+            style_cell={
+                'textAlign': 'left',
+                'padding': '10px',
+                'whiteSpace': 'normal',
+                'wordWrap': 'break-word',
+                'fontFamily': 'Arial, sans-serif',
+                'fontSize': '14px',
+                'height': 'auto'
+            },
+            style_cell_conditional=[
+                {'if': {'column_id': 'conteudo'}, 'maxWidth': '220px'},
+                {'if': {'column_id': 'link'}, 'maxWidth': '160px'},
+                {'if': {'column_id': 'aba'}, 'maxWidth': '180px'}
+            ],
+            style_header={
+                'backgroundColor': '#007BFF',
+                'color': 'white',
+                'fontWeight': 'bold',
+                'textAlign': 'center'
+            },
             style_data_conditional=[
                 {'if': {'filter_query': '{status} contains "OK"'}, 'color': 'green', 'fontWeight': 'bold'},
                 {'if': {'filter_query': '{status} contains "Não encontrado"'}, 'color': 'red', 'fontWeight': 'bold'},
+                {'if': {'row_index': 'odd'}, 'backgroundColor': '#fbfbfb'}
             ],
             markdown_options={"html": True},
             page_size=20
         )
     ])]),
 
+    dbc.Row([
+        dbc.Col([
+            dbc.Button("Gerar página HTML dos links do log", id="gerar-html-btn", color="secondary", className="mb-2"),
+            html.Div(id="link-html-area")
+        ], width=12)
+    ]),
+
     dbc.Row([dbc.Col([
-        html.H4("Log de Processamento"),
-        html.Div(id="log-area", style={"whiteSpace": "pre-line", "height":"300px", "overflowY":"scroll","backgroundColor":"#f9f9f9","padding":"10px","border":"1px solid #ddd"})
+        html.H4("Log de Processamento", className="text-center"),
+        html.Div(id="log-area", style={"whiteSpace": "pre-line","height":"280px","overflowY":"scroll","backgroundColor":"#f9f9f9","padding":"10px","border":"1px solid #ddd"})
     ])]),
 
-    # Interval para atualizar incrementalmente
-    dcc.Interval(id="interval-component", interval=5000, n_intervals=0)
+    dcc.Interval(id="interval-component", interval=700, n_intervals=0)
 ], fluid=True)
 
 # --- Callbacks ---
@@ -183,41 +249,76 @@ app.layout = dbc.Container([
     Output("lai-graph", "figure"),
     Output("lai-table", "data"),
     Output("progress-bar", "value"),
+    Output("progress-bar", "children"),
+    Output("progress-text", "children"),
     Output("log-area", "children"),
     Input("interval-component", "n_intervals")
 )
 def atualizar_dashboard_interval(n):
     if not resultados_parciais:
-        return {}, [], 0, ""
+        return {}, [], 0, "", "0%", ""
+
     df = pd.DataFrame(resultados_parciais)
     counts = df.groupby("status").size()
     fig = go.Figure([go.Bar(x=counts.index, y=counts.values, text=counts.values, textposition="auto")])
-    fig.update_layout(title="Status das palavras-chave detectadas", yaxis_title="Quantidade")
+    fig.update_layout(title="Status das palavras-chave detectadas", yaxis_title="Quantidade", margin=dict(t=40))
 
     for d in resultados_parciais:
-        if d["link"]:
+        if d.get("link") and isinstance(d["link"], str) and not d["link"].startswith("[Link]("):
             d["link"] = f"[Link]({d['link']})"
-        else:
+        elif not d.get("link"):
             d["link"] = "-"
 
     progresso_percent = int((progresso["processados"]/max(progresso["total"],1))*100)
-    log_text = "\n".join(log_msgs[-50:])
-    return fig, resultados_parciais, progresso_percent, log_text
+    log_text = "\n".join(log_msgs[-200:])
 
-# Botão de iniciar processamento
+    return fig, resultados_parciais, progresso_percent, "", f"{progresso_percent}%", log_text
+
+
 @app.callback(
     Output("run-button", "disabled"),
     Input("run-button", "n_clicks"),
     State("url-input", "value")
 )
 def iniciar_processamento(n_clicks, url):
-    global thread_active, url_global
+    global thread_active, url_global, stop_thread, progresso
     if n_clicks and url and not thread_active:
         url_global = url
+        stop_thread = False
         thread_active = True
+        progresso = {"total": 0, "processados": 0}
         threading.Thread(target=processar_site, args=(url,), daemon=True).start()
         return True
     return False
+
+
+@app.callback(
+    Output("stop-button", "disabled"),
+    Input("stop-button", "n_clicks")
+)
+def parar_verificacao(n_clicks):
+    global stop_thread, thread_active
+    if n_clicks and thread_active:
+        stop_thread = True
+        return True
+    return False
+
+
+@app.callback(
+    Output("link-html-area", "children"),
+    Output("redirect-html", "href"),
+    Input("gerar-html-btn", "n_clicks"),
+    prevent_initial_call=True
+)
+def gerar_html(n_clicks):
+    if not n_clicks:
+        return "", dash.no_update
+
+    caminho_relativo = gerar_html_log_links()
+    link_comp = html.A("Abrir página com links verificados", href=caminho_relativo, target="_blank", style={"fontWeight":"600"})
+
+    return link_comp, caminho_relativo
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=8051)
