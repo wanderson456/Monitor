@@ -175,7 +175,7 @@ app.layout = dbc.Container([
     ])]),
 
     # Interval para atualizar incrementalmente
-    dcc.Interval(id="interval-component", interval=1500, n_intervals=0)
+    dcc.Interval(id="interval-component", interval=5000, n_intervals=0)
 ], fluid=True)
 
 # --- Callbacks ---
